@@ -1,0 +1,710 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Micropipette 正向/反向吸液動畫教學</title>
+  <style>
+    :root{
+      --bg:#0b1020;
+      --panel:#101a33;
+      --text:#e9eefc;
+      --muted:#b8c4e6;
+      --border:rgba(255,255,255,.12);
+
+      --f-fill:#D6EAF8;  /* forward background */
+      --f-stroke:#2E86C1;
+      --r-fill:#FDEBD0;  /* reverse background */
+      --r-stroke:#CA6F1E;
+
+      --ok:#38d39f;
+      --warn:#ffcc66;
+      --bad:#ff6b6b;
+    }
+
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Arial, "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+      background: radial-gradient(1200px 600px at 20% 0%, #182454 0%, var(--bg) 60%);
+      color:var(--text);
+    }
+
+    .wrap{
+      max-width:1100px;
+      margin:0 auto;
+      padding:20px 16px 28px;
+    }
+
+    header{
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+      margin-bottom:14px;
+    }
+    header h1{
+      font-size:20px;
+      margin:0;
+      letter-spacing:.2px;
+    }
+    header p{
+      margin:0;
+      color:var(--muted);
+      font-size:14px;
+      line-height:1.5;
+    }
+
+    .toolbar{
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      align-items:center;
+      justify-content:space-between;
+      margin:14px 0 16px;
+      padding:12px;
+      border:1px solid var(--border);
+      border-radius:12px;
+      background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+    }
+
+    .leftControls, .rightControls{
+      display:flex; gap:10px; flex-wrap:wrap; align-items:center;
+    }
+
+    .pill{
+      padding:6px 10px;
+      border-radius:999px;
+      border:1px solid var(--border);
+      color:var(--muted);
+      font-size:12px;
+      user-select:none;
+      white-space:nowrap;
+    }
+
+    .btn{
+      appearance:none;
+      border:1px solid var(--border);
+      background:rgba(255,255,255,.06);
+      color:var(--text);
+      padding:8px 10px;
+      border-radius:10px;
+      cursor:pointer;
+      font-weight:600;
+      letter-spacing:.2px;
+      transition:transform .04s ease, background .15s ease, border-color .15s ease;
+    }
+    .btn:hover{ background:rgba(255,255,255,.10) }
+    .btn:active{ transform:translateY(1px) }
+    .btn.primary{
+      border-color:rgba(255,255,255,.22);
+      background:rgba(255,255,255,.12);
+    }
+    .btn.danger{
+      border-color:rgba(255,107,107,.35);
+      background:rgba(255,107,107,.14);
+    }
+
+    .stepInfo{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+    }
+
+    .stepBadge{
+      padding:6px 10px;
+      border-radius:999px;
+      border:1px solid var(--border);
+      background:rgba(255,255,255,.06);
+      font-size:12px;
+      color:var(--muted);
+    }
+
+    .grid{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:14px;
+    }
+
+    @media (max-width: 920px){
+      .grid{ grid-template-columns:1fr; }
+      .stepInfo{ justify-content:flex-start; }
+    }
+
+    .card{
+      border:1px solid var(--border);
+      border-radius:14px;
+      overflow:hidden;
+      background:linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
+    }
+
+    .cardHead{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding:12px 12px 10px;
+      border-bottom:1px solid var(--border);
+      gap:10px;
+    }
+    .cardHead .title{
+      display:flex;
+      flex-direction:column;
+      gap:4px;
+      min-width:0;
+    }
+    .tag{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      font-weight:800;
+      letter-spacing:.2px;
+      font-size:15px;
+    }
+    .tag .dot{
+      width:10px;height:10px;border-radius:50%;
+      background:var(--f-stroke);
+      box-shadow:0 0 0 3px rgba(46,134,193,.18);
+      flex:0 0 auto;
+    }
+    .tag.reverse .dot{
+      background:var(--r-stroke);
+      box-shadow:0 0 0 3px rgba(202,111,30,.20);
+    }
+    .subtitle{
+      font-size:12px;
+      color:var(--muted);
+      line-height:1.45;
+    }
+
+    .cardBody{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:12px;
+      padding:12px;
+    }
+
+    @media (max-width: 520px){
+      .cardBody{ grid-template-columns:1fr; }
+    }
+
+    .viz{
+      border-radius:12px;
+      border:1px solid var(--border);
+      background:rgba(0,0,0,.18);
+      padding:12px;
+      position:relative;
+      min-height:290px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+
+    .notes{
+      border-radius:12px;
+      border:1px solid var(--border);
+      background:rgba(0,0,0,.12);
+      padding:12px;
+      min-height:290px;
+    }
+    .notes h3{
+      margin:0 0 8px;
+      font-size:14px;
+      letter-spacing:.2px;
+    }
+    .notes ul{
+      margin:0;
+      padding-left:18px;
+      color:var(--text);
+      line-height:1.6;
+      font-size:13px;
+    }
+    .notes li{ margin:6px 0 }
+    .muted{ color:var(--muted) }
+
+    /* ===== Micropipette SVG-ish drawing with divs ===== */
+    .scene{
+      width:260px;
+      height:260px;
+      position:relative;
+      transform:translateY(-4px);
+    }
+
+    .tube{
+      position:absolute;
+      left:50%;
+      top:38px;
+      width:58px;
+      height:130px;
+      transform:translateX(-50%);
+      border-radius:14px;
+      border:2px solid rgba(255,255,255,.35);
+      background:rgba(255,255,255,.06);
+      overflow:hidden;
+    }
+
+    .plunger{
+      position:absolute;
+      left:50%;
+      top:10px;
+      width:70px;
+      height:40px;
+      transform:translateX(-50%);
+      border-radius:12px;
+      border:2px solid rgba(255,255,255,.35);
+      background:rgba(255,255,255,.08);
+    }
+    .plunger::after{
+      content:"";
+      position:absolute;
+      left:50%;
+      top:8px;
+      width:34px;
+      height:22px;
+      transform:translateX(-50%);
+      border-radius:10px;
+      background:rgba(255,255,255,.10);
+      border:1px solid rgba(255,255,255,.25);
+    }
+
+    .tip{
+      position:absolute;
+      left:50%;
+      top:168px;
+      width:50px;
+      height:74px;
+      transform:translateX(-50%);
+      clip-path: polygon(16% 0%, 84% 0%, 62% 100%, 38% 100%);
+      border:2px solid rgba(255,255,255,.35);
+      background:rgba(255,255,255,.05);
+      overflow:hidden;
+    }
+
+    .liquid{
+      position:absolute;
+      left:0;
+      bottom:0;
+      width:100%;
+      height:0%;
+      background:linear-gradient(180deg, rgba(80,200,255,.55), rgba(80,200,255,.25));
+      transition:height .35s ease;
+    }
+
+    .liquid.reverse{
+      background:linear-gradient(180deg, rgba(255,175,80,.60), rgba(255,175,80,.25));
+    }
+
+    .beaker{
+      position:absolute;
+      left:50%;
+      bottom:6px;
+      width:210px;
+      height:74px;
+      transform:translateX(-50%);
+      border-radius:14px 14px 18px 18px;
+      border:2px solid rgba(255,255,255,.25);
+      background:rgba(255,255,255,.04);
+      overflow:hidden;
+    }
+    .beaker .bath{
+      position:absolute;
+      left:0; bottom:0;
+      width:100%; height:58%;
+      background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.01));
+    }
+
+    .label{
+      position:absolute;
+      left:10px;
+      top:8px;
+      font-size:12px;
+      color:var(--muted);
+      letter-spacing:.2px;
+    }
+
+    .arrow{
+      position:absolute;
+      left:50%;
+      top:92px;
+      transform:translateX(-50%);
+      font-size:12px;
+      color:var(--muted);
+      opacity:.0;
+      transition:opacity .2s ease;
+      user-select:none;
+    }
+
+    .callout{
+      position:absolute;
+      top:6px;
+      right:10px;
+      padding:6px 10px;
+      border-radius:999px;
+      border:1px solid var(--border);
+      font-size:12px;
+      color:var(--muted);
+      background:rgba(0,0,0,.18);
+    }
+
+    /* Color frames for each mode */
+    .frame.forward{
+      box-shadow: inset 0 0 0 2px rgba(46,134,193,.55), 0 10px 28px rgba(0,0,0,.35);
+    }
+    .frame.reverse{
+      box-shadow: inset 0 0 0 2px rgba(202,111,30,.55), 0 10px 28px rgba(0,0,0,.35);
+    }
+
+    .legend{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      flex-wrap:wrap;
+      margin-top:10px;
+      font-size:12px;
+      color:var(--muted);
+    }
+    .chip{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:6px 10px;
+      border-radius:999px;
+      border:1px solid var(--border);
+      background:rgba(255,255,255,.05);
+    }
+    .chip .dot{
+      width:10px;height:10px;border-radius:50%;
+      background:var(--f-stroke);
+      box-shadow:0 0 0 3px rgba(46,134,193,.18);
+    }
+    .chip.r .dot{
+      background:var(--r-stroke);
+      box-shadow:0 0 0 3px rgba(202,111,30,.20);
+    }
+
+    /* ===== step animations (via data-step) ===== */
+    .scene[data-step="0"] .arrow{ opacity:0 }
+    .scene[data-step="1"] .arrow{ opacity:1 }
+    .scene[data-step="2"] .arrow{ opacity:1 }
+    .scene[data-step="3"] .arrow{ opacity:1 }
+
+    /* plunger movement */
+    .scene .plunger{
+      transition: transform .35s ease;
+    }
+    .scene[data-step="1"] .plunger{ transform:translateX(-50%) translateY(10px) }  /* press */
+    .scene[data-step="2"] .plunger{ transform:translateX(-50%) translateY(0px) }   /* release */
+    .scene[data-step="3"] .plunger{ transform:translateX(-50%) translateY(14px) }  /* dispense */
+
+    /* tip dipping indicator */
+    .scene .beaker{
+      transition: transform .35s ease;
+    }
+    .scene[data-step="1"] .beaker{ transform:translateX(-50%) translateY(-4px) }
+    .scene[data-step="2"] .beaker{ transform:translateX(-50%) translateY(-4px) }
+
+    /* bubble hint */
+    .bubble{
+      position:absolute;
+      left:50%;
+      top:210px;
+      width:8px;height:8px;
+      transform:translateX(-50%);
+      border-radius:50%;
+      background:rgba(255,255,255,.0);
+      opacity:0;
+      transition: opacity .2s ease;
+    }
+    .scene.bubbleOn .bubble{
+      opacity:1;
+      background:rgba(255,255,255,.35);
+      animation: floatUp 1.2s ease-in-out infinite;
+    }
+    @keyframes floatUp{
+      0%{ transform:translateX(-50%) translateY(0px); opacity:.15 }
+      60%{ opacity:.35 }
+      100%{ transform:translateX(-50%) translateY(-18px); opacity:0 }
+    }
+
+    /* small footer */
+    footer{
+      margin-top:14px;
+      color:var(--muted);
+      font-size:12px;
+      line-height:1.5;
+      opacity:.95;
+    }
+    footer code{
+      color:#d9e5ff;
+      background:rgba(255,255,255,.06);
+      padding:2px 6px;
+      border-radius:8px;
+      border:1px solid var(--border);
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Micropipette 操作動畫：正向吸液（🟦）與反向吸液（🟧）</h1>
+      <p>目的：讓新手分析員用「顏色 + Step 動畫」快速理解吸液方式差異，降低因操作誤解造成的人為 OOS。</p>
+    </header>
+
+    <div class="toolbar">
+      <div class="leftControls">
+        <button class="btn primary" id="prevBtn">上一步</button>
+        <button class="btn primary" id="nextBtn">下一步</button>
+        <button class="btn" id="playBtn">自動播放</button>
+        <button class="btn danger" id="resetBtn">重設</button>
+      </div>
+      <div class="stepInfo">
+        <span class="stepBadge" id="stepBadge">Step 0：選擇吸液方式</span>
+        <span class="pill">提示：正向＝第一段吸/第二段吹；反向＝第二段吸/第一段放（不吹）</span>
+      </div>
+    </div>
+
+    <div class="grid">
+      <!-- Forward -->
+      <section class="card">
+        <div class="cardHead">
+          <div class="title">
+            <div class="tag">
+              <span class="dot" aria-hidden="true"></span>
+              <span>正向吸液（Forward Pipetting）</span>
+            </div>
+            <div class="subtitle">適用：水性、低黏度、不易起泡。重點：第一段吸液，放液需到第二段吹出殘液。</div>
+          </div>
+          <div class="pill">顏色：🟦 藍色流程</div>
+        </div>
+
+        <div class="cardBody">
+          <div class="viz frame forward">
+            <div class="callout" id="fMode">🟦 正向</div>
+            <div class="scene" id="sceneForward" data-step="0">
+              <div class="label">吸頭 / 活塞示意</div>
+              <div class="plunger"></div>
+              <div class="tube">
+                <div class="liquid" id="fTubeLiquid"></div>
+              </div>
+              <div class="tip">
+                <div class="liquid" id="fTipLiquid"></div>
+              </div>
+              <div class="bubble"></div>
+              <div class="beaker">
+                <div class="bath"></div>
+              </div>
+              <div class="arrow" id="fArrow">依 Step 操作：按壓 → 吸液 → 放液 → 吹出殘液</div>
+            </div>
+          </div>
+
+          <div class="notes">
+            <h3>🟦 正向吸液 Step 說明</h3>
+            <ul id="fNotes">
+              <li class="muted">Step 0：請先確認液體為水性/低黏度/不易起泡，才使用正向吸液。</li>
+              <li class="muted">Step 1：按壓至第一段，吸頭浸入液面下。</li>
+              <li class="muted">Step 2：緩慢放開按鈕吸液（避免過快造成氣泡）。</li>
+              <li class="muted">Step 3：移至容器放液，先按至第一段釋放，再按至第二段吹出殘液。</li>
+            </ul>
+
+            <div class="legend">
+              <span class="chip"><span class="dot" aria-hidden="true"></span>正向吸液（藍色）</span>
+              <span class="chip" style="border-color:rgba(255,204,102,.35); background:rgba(255,204,102,.10);">新手重點：放液要「第二段吹出」</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Reverse -->
+      <section class="card">
+        <div class="cardHead">
+          <div class="title">
+            <div class="tag reverse">
+              <span class="dot" aria-hidden="true"></span>
+              <span>反向吸液（Reverse Pipetting）</span>
+            </div>
+            <div class="subtitle">適用：高黏度、易起泡、微量高精度。重點：第二段吸液，只到第一段放液（吸頭殘液不吹出）。</div>
+          </div>
+          <div class="pill">顏色：🟧 橘色流程</div>
+        </div>
+
+        <div class="cardBody">
+          <div class="viz frame reverse">
+            <div class="callout" id="rMode">🟧 反向</div>
+            <div class="scene" id="sceneReverse" data-step="0">
+              <div class="label">吸頭 / 活塞示意</div>
+              <div class="plunger"></div>
+              <div class="tube">
+                <div class="liquid reverse" id="rTubeLiquid"></div>
+              </div>
+              <div class="tip">
+                <div class="liquid reverse" id="rTipLiquid"></div>
+              </div>
+              <div class="bubble"></div>
+              <div class="beaker">
+                <div class="bath"></div>
+              </div>
+              <div class="arrow" id="rArrow">依 Step 操作：第二段吸 → 第一段放 → 不吹殘液</div>
+            </div>
+          </div>
+
+          <div class="notes">
+            <h3>🟧 反向吸液 Step 說明</h3>
+            <ul id="rNotes">
+              <li class="muted">Step 0：若液體黏稠/易起泡/需更高定量穩定性，使用反向吸液。</li>
+              <li class="muted">Step 1：直接按壓至第二段，吸頭浸入液面下。</li>
+              <li class="muted">Step 2：緩慢放開按鈕吸液（會多吸入體積，用於補償附著與泡沫）。</li>
+              <li class="muted">Step 3：移至容器放液「只按到第一段」，吸頭內殘液保留，不可吹出。</li>
+            </ul>
+
+            <div class="legend">
+              <span class="chip r"><span class="dot" aria-hidden="true"></span>反向吸液（橘色）</span>
+              <span class="chip" style="border-color:rgba(255,107,107,.35); background:rgba(255,107,107,.12);">關鍵警示：反向吸液「不可吹出殘液」</span>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <footer>
+      <div>操作提醒：若出現氣泡或黏稠液體移液偏差，請優先檢查是否「選錯吸液模式」或「放液段位操作錯誤」。</div>
+      <div>檔案使用：將本頁存成 <code>micropipette_animation.html</code>，用 Chrome/Edge 直接開啟（可離線）。</div>
+    </footer>
+  </div>
+
+  <script>
+    // Global step controller: 0..3
+    const stepBadge = document.getElementById("stepBadge");
+    const scenes = {
+      forward: document.getElementById("sceneForward"),
+      reverse: document.getElementById("sceneReverse")
+    };
+
+    const fTipLiquid = document.getElementById("fTipLiquid");
+    const fTubeLiquid = document.getElementById("fTubeLiquid");
+    const rTipLiquid = document.getElementById("rTipLiquid");
+    const rTubeLiquid = document.getElementById("rTubeLiquid");
+
+    let step = 0;
+    let playing = false;
+    let timer = null;
+
+    const stepText = [
+      "Step 0：選擇吸液方式",
+      "Step 1：按壓與浸入（正向第一段 / 反向第二段）",
+      "Step 2：緩慢吸液（避免氣泡 / 補償附著）",
+      "Step 3：放液（正向可吹出殘液 / 反向不可吹出）"
+    ];
+
+    function clamp(n, min, max){ return Math.max(min, Math.min(max, n)); }
+
+    function applyForwardVisual(s){
+      // step 0: empty
+      // step 1: press + dip (still empty)
+      // step 2: suction -> liquid rises
+      // step 3: dispense -> empty (after blow out)
+      if(s === 0){
+        fTipLiquid.style.height = "0%";
+        fTubeLiquid.style.height = "0%";
+        scenes.forward.classList.remove("bubbleOn");
+      }
+      if(s === 1){
+        fTipLiquid.style.height = "0%";
+        fTubeLiquid.style.height = "0%";
+        // show bubble hint if user releases too fast (training cue) - keep OFF by default
+        scenes.forward.classList.remove("bubbleOn");
+      }
+      if(s === 2){
+        fTipLiquid.style.height = "52%";
+        fTubeLiquid.style.height = "34%";
+        scenes.forward.classList.remove("bubbleOn");
+      }
+      if(s === 3){
+        fTipLiquid.style.height = "0%";
+        fTubeLiquid.style.height = "0%";
+        scenes.forward.classList.remove("bubbleOn");
+      }
+    }
+
+    function applyReverseVisual(s){
+      // reverse draws more than dispenses; leaves residual in tip/tube at step 3
+      if(s === 0){
+        rTipLiquid.style.height = "0%";
+        rTubeLiquid.style.height = "0%";
+        scenes.reverse.classList.remove("bubbleOn");
+      }
+      if(s === 1){
+        rTipLiquid.style.height = "0%";
+        rTubeLiquid.style.height = "0%";
+        scenes.reverse.classList.remove("bubbleOn");
+      }
+      if(s === 2){
+        rTipLiquid.style.height = "68%";
+        rTubeLiquid.style.height = "44%";
+        scenes.reverse.classList.remove("bubbleOn");
+      }
+      if(s === 3){
+        // dispensed only to first stop -> leave residual
+        rTipLiquid.style.height = "22%";
+        rTubeLiquid.style.height = "14%";
+        scenes.reverse.classList.remove("bubbleOn");
+      }
+    }
+
+    function render(){
+      step = clamp(step, 0, 3);
+
+      stepBadge.textContent = stepText[step];
+
+      scenes.forward.dataset.step = String(step);
+      scenes.reverse.dataset.step = String(step);
+
+      applyForwardVisual(step);
+      applyReverseVisual(step);
+    }
+
+    function stopPlay(){
+      playing = false;
+      clearInterval(timer);
+      timer = null;
+      document.getElementById("playBtn").textContent = "自動播放";
+    }
+
+    function startPlay(){
+      if(playing) return;
+      playing = true;
+      document.getElementById("playBtn").textContent = "停止播放";
+      timer = setInterval(() => {
+        if(step < 3){ step += 1; render(); }
+        else { stopPlay(); }
+      }, 1300);
+    }
+
+    document.getElementById("prevBtn").addEventListener("click", () => {
+      stopPlay();
+      step -= 1;
+      render();
+    });
+
+    document.getElementById("nextBtn").addEventListener("click", () => {
+      stopPlay();
+      step += 1;
+      render();
+    });
+
+    document.getElementById("resetBtn").addEventListener("click", () => {
+      stopPlay();
+      step = 0;
+      render();
+    });
+
+    document.getElementById("playBtn").addEventListener("click", () => {
+      if(playing) stopPlay();
+      else startPlay();
+    });
+
+    // Initial render
+    render();
+  </script>
+</body>
+</html>
