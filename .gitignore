@@ -1,0 +1,14 @@
+# 安全防護：忽略環境變數與金鑰
+.env
+*.key
+*.pem
+credentials.json
+
+# 系統雜物：忽略系統自動產生的檔案
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 編輯器設定：忽略個人開發工具設定
+.vscode/
+.idea/
